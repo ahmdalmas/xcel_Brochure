@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: auto;
+            background-color: #f5f5f5;
+        }
+
+        #pdf-container {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="pdf-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script>
+        var url = './XCEL_BROCHURE.pdf';
+
+        var pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+
+        try {
+            var loadingTask = pdfjsLib.getDocument(url);
+            loadingTask.promise.then(async function (pdf) {
+                console.log('PDF loaded');
+
+                var totalPages = pdf.numPages;
+                var scale = 3;
+                for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+                    await pageLoop(pageNumber, pdf, scale)
+                }
+            });
+
+            function pageLoop(pageNumber, pdf, scale) {
+                pdf.getPage(pageNumber).then(function (page) {
+                    var viewport = page.getViewport({ scale: scale });
+
+                    var canvas = document.createElement('canvas');
+                    var container = document.getElementById('pdf-container');
+                    var context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    var renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    page.render(renderContext).promise.then(function () {
+                        console.log('Page rendered');
+
+                        // Append the canvas to the container
+                        container.appendChild(canvas);
+
+                        // Make the canvas responsive by resizing based on the container width
+                        window.addEventListener('resize', function () {
+                            var scaleFactor = container.clientWidth / viewport.width;
+                            canvas.style.width = container.clientWidth + 'px';
+                            canvas.style.height = viewport.height * scaleFactor + 'px';
+                        });
+
+                        // Trigger initial resize to fit the screen
+                        var scaleFactor = container.clientWidth / viewport.width;
+                        canvas.style.width = container.clientWidth + 'px';
+                        canvas.style.height = viewport.height * scaleFactor + 'px';
+                        document.getElementById('pdf-container').appendChild(canvas);
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Error loading PDF:', error);
+        }
+    </script>
+</body>
+
+</html>
