@@ -41,51 +41,44 @@
 
         try {
             var loadingTask = pdfjsLib.getDocument(url);
-            loadingTask.promise.then(async function (pdf) {
+            loadingTask.promise.then(function (pdf) {
                 console.log('PDF loaded');
 
-                var totalPages = pdf.numPages;
-                var scale = 3;
-                for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
-                    await pageLoop(pageNumber, pdf, scale)
-                }
-            });
+                var container = document.getElementById('pdf-container');
+                var renderPageSequentially = function (pageNumber) {
+                    if (pageNumber > pdf.numPages) {
+                        return;
+                    }
 
-            function pageLoop(pageNumber, pdf, scale) {
-                pdf.getPage(pageNumber).then(function (page) {
-                    var viewport = page.getViewport({ scale: scale });
+                    pdf.getPage(pageNumber).then(function (page) {
+                        var viewport = page.getViewport({ scale: 4 });
 
-                    var canvas = document.createElement('canvas');
-                    var container = document.getElementById('pdf-container');
-                    var context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
+                        var canvas = document.createElement('canvas');
+                        var context = canvas.getContext('2d');
 
-                    var renderContext = {
-                        canvasContext: context,
-                        viewport: viewport
-                    };
-                    page.render(renderContext).promise.then(function () {
-                        console.log('Page rendered');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
 
-                        // Append the canvas to the container
-                        container.appendChild(canvas);
+                        var renderContext = {
+                            canvasContext: context,
+                            viewport: viewport
+                        };
+                        page.render(renderContext).promise.then(function () {
+                            console.log('Page rendered:', pageNumber);
 
-                        // Make the canvas responsive by resizing based on the container width
-                        window.addEventListener('resize', function () {
+                            container.appendChild(canvas);
+
                             var scaleFactor = container.clientWidth / viewport.width;
                             canvas.style.width = container.clientWidth + 'px';
                             canvas.style.height = viewport.height * scaleFactor + 'px';
-                        });
 
-                        // Trigger initial resize to fit the screen
-                        var scaleFactor = container.clientWidth / viewport.width;
-                        canvas.style.width = container.clientWidth + 'px';
-                        canvas.style.height = viewport.height * scaleFactor + 'px';
-                        document.getElementById('pdf-container').appendChild(canvas);
+                            renderPageSequentially(pageNumber + 1);
+                        });
                     });
-                });
-            }
+                };
+
+                renderPageSequentially(1);
+            });
         } catch (error) {
             console.error('Error loading PDF:', error);
         }
